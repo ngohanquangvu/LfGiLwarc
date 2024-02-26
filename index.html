@@ -1,0 +1,293 @@
+app = customtkinter.CTk()
+app.title("Crawl FL Ig")
+app.geometry("350x380")
+
+def stop():
+    pass
+
+def check_status():
+    d = 0
+    if len(list_username)==0:
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Vui lòng nhập file username\n')
+        frame_text_box.configure(state = "disabled")
+        d+=1
+    if len(list_userpass)==0:
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Vui lòng nhập file account\n')
+        frame_text_box.configure(state = "disabled")
+        d+=1
+    try:
+        check = int(delay.get())
+    except:
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Vui lòng nhập đúng định dạng của delay\n')
+        frame_text_box.configure(state = "disabled")
+        d+=1
+    try:
+        check = int(change_account.get())
+    except:
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Vui lòng nhập đúng định dạng của số acc change để crawl\n')
+        frame_text_box.configure(state = "disabled")
+        d+=1
+    if d>0: return False
+    else: return True
+
+def start():
+    def craw_fl_ig(user, pss, username, datestring):
+        def password_encrypt(password):
+            publickeyid, publickey = password_publickeys()
+            session_key = get_random_bytes(32)
+            iv = get_random_bytes(12)
+            timestamp = str(int(time.time()))
+            decoded_publickey = base64.b64decode(publickey.encode())
+            recipient_key = RSA.import_key(decoded_publickey)
+            cipher_rsa = PKCS1_v1_5.new(recipient_key)
+            rsa_encrypted = cipher_rsa.encrypt(session_key)
+            cipher_aes = AES.new(session_key, AES.MODE_GCM, iv)
+            cipher_aes.update(timestamp.encode())
+            aes_encrypted, tag = cipher_aes.encrypt_and_digest(password.encode("utf8"))
+            size_buffer = len(rsa_encrypted).to_bytes(2, byteorder="little")
+            payload = base64.b64encode(
+                b"".join(
+                    [
+                        b"\x01",
+                        publickeyid.to_bytes(1, byteorder="big"),
+                        iv,
+                        size_buffer,
+                        rsa_encrypted,
+                        tag,
+                        aes_encrypted,
+                    ]
+                )
+            )
+            return f"#PWD_INSTAGRAM:4:{timestamp}:{payload.decode()}"
+
+        def password_publickeys():
+            resp = requests.get("https://i.instagram.com/api/v1/qe/sync/")
+            publickeyid = int(resp.headers.get("ig-set-password-encryption-key-id"))
+            publickey = resp.headers.get("ig-set-password-encryption-pub-key")
+            return publickeyid, publickey
+
+        enc_pass = password_encrypt(pss)
+
+        s = requests.session()
+        s.get("https://www.instagram.com")
+        token = s.cookies.get ("csrftoken")
+        header={
+        "x-csrftoken":token,
+        "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0"
+        }
+
+        data = {
+        "enc_password": enc_pass,
+        "username": user,
+        "queryParams": {}
+        }
+        r = s.post("https://www.instagram.com/accounts/login/ajax/",data=data, headers=header)
+
+        if str(r.json()["authenticated"]) == "False":
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}|{pss}\n')
+            frame_text_box.configure(state = "disabled")
+        elif str(r.json()["authenticated"]) == "True":
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'Login thành công account {user}\n')
+            frame_text_box.configure(state = "disabled")
+        else:
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'Tạm thời bị block, chờ 20s nhả block\n')
+            frame_text_box.configure(state = "disabled")
+            time.sleep(20)
+            craw_fl_ig(username)
+
+        h ={
+            'Accept':'application/json, text/plain, */*',
+            'Accept-Encoding':'gzip, deflate, br',
+            'Accept-Language':'vi',
+            'Cookie':'fbm_124024574287414=base_domain=.instagram.com; mid=ZQHndgALAAHD0QbdJQ2QL0JIteJF; ig_did=984F10FF-E49B-46D6-A8AC-B296F195FEBF; ig_nrcb=1; datr=bkw1ZY-DJaHPVQ6V6OqTLIvK; csrftoken=rfB0VNbWN1lb5b5Z8sd0oKdM6pLtSYvY; ds_user_id=43895382787; ps_n=0; ps_l=0; shbid="15857\05443895382787\0541740197107:01f7a633c4e1224ed16feea3ce56bbd6ae6d77779e894d858c442637077ccf3d5aa196fc"; shbts="1708661107\05443895382787\0541740197107:01f7d70a3bdd82a08328460fd334050de05d2d904193be9be8ad7561f14b5e531a3fbf9f"; dpr=1.25; sessionid=43895382787%3A21suFmCEoIDFxi%3A20%3AAYdWmMLEAKwUscXCeWLHPb1h1gLXFjwxWnNLM7-goA; fbsr_124024574287414=nFi8wN_U52rApFJ7vtMALrJrGV5GMcWe-nYCRCMdx-U.eyJ1c2VyX2lkIjoiMTAwMDgwOTUxNzc5NjU0IiwiY29kZSI6IkFRQ3A2eHd4b19ObWpRaVYwRVRfRjJpbEYxbXFJb2VBVHliMmZfVUJRbnRVLW5MX0tKOFZoMDFUcldkeDY0TzJXcGRWWjZzR2pfWG5idXlBNWlCeHhYYWZnRW1ZVENfbElsR2Rmbjd0d1FqUnZGVWhHLVg2bFZfRjhQZ0lwUVNWOFFZMEd2clA3ZVR6Nl9LNEhiQXZPc0lMMU9EaEdVbVBpVWozaVdkcDNRQ1VHcV9aVjJOUzVzRmxtTzM3RFZGMEIySXlhdGVIUUZvYktzNkhWWXpVYWFENDNfamhKTWVNb0lpbVBXYkJ6ajlPMWtsSGtxZFpySkhZQ0ZzVU03dF9oLWtUQnBoa1pXYk9ic3VMSkcxR1hWYWVFSnFzcVh6X3AxS01WZG5QUUppNWl4dEVHWXVsLWJYWU1RLVV5WmZGOGdnIiwib2F1dGhfdG9rZW4iOiJFQUFCd3pMaXhuallCTzhQYUp0VEdob1A0a1AyTHRicHpxQm9BaHVPVUZnZkR0VVFvMDRvaXBGUDBrZE94YW5PcG9SMTl6a3ljcG9mclhOeDQzRE1lTXRYbjlHSVRFVVE2dVZWTDY0eG14ZzlaQVFUVVUzVWxsNFpBMEluNkR2NE5CSnNjTUNKWU9RbVpCNkw1T2tQdGtiNFNkZGtBdWlvU3FCUW14Z29NU0g3Unl4dzNKUnRlbTUxSjlXM2p4czRFVVFaRCIsImFsZ29yaXRobSI6IkhNQUMtU0hBMjU2IiwiaXNzdWVkX2F0IjoxNzA4NjgxNzY5fQ; rur="VLL\05443895382787\0541740217918:01f792c006ea9fa8e7bcffaa7317d1ffd2e5aed8c2bc9d6a8fd2928dbf8a9f6d08bfb8af"',
+            'Sec-Ch-Ua':'"Not A(Brand";v="99", "Microsoft Edge";v="121", "Chromium";v="121"',
+            'Sec-Ch-Ua-Mobile':'?0',
+            'Sec-Ch-Ua-Platform':'"Windows"',
+            'Sec-Fetch-Dest':'empty',
+            'Sec-Fetch-Mode':'cors',
+            'Sec-Fetch-Site':'none',
+            'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+            'X-Asbd-Id':'437806',
+            'X-Csrftoken':token,
+            'X-Ig-App-Id':'936619743392459'
+        }
+
+        ck_insta = r.cookies.get_dict()
+
+        uid = requests.get(f"https://i.instagram.com/api/v1/users/web_profile_info/?username={username}", cookies=ck_insta, headers=h).json()["data"]["user"]["id"]
+
+        url = f"https://www.instagram.com/graphql/query/?query_hash=58712303d941c6855d4e888c5f0cd22f&variables=%7B%22id%22:%22{uid}%22,%22first%22:50,%22after%22:%22%22%7D"
+        list_id_following = []
+        while True:
+            a = requests.get(url, cookies=ck_insta).json()
+            b = a["data"]["user"]["edge_follow"]["edges"]
+            for i in b:
+                iid = i["node"]["id"]
+                username_following = i["node"]["username"]
+                fullname = i["node"]["full_name"]
+                avt_pic = i["node"]["profile_pic_url"]
+                is_verified = i["node"]["is_verified"]
+                followed_by_viewer = i["node"]["followed_by_viewer"]
+                list_id_following.append([iid, username_following, fullname, avt_pic, followed_by_viewer, is_verified])
+            if str(a["data"]["user"]["edge_follow"]["page_info"]["has_next_page"]) == "True":
+                next_cursor = quote(a["data"]["user"]["edge_follow"]["page_info"]["end_cursor"])
+                url = f"https://www.instagram.com/graphql/query/?query_hash=58712303d941c6855d4e888c5f0cd22f&variables=%7B%22id%22:%22{uid}%22,%22first%22:50,%22after%22:%22{next_cursor}%22%7D"
+            else:
+                break
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Lấy thành công {len(list_id_following)} following của user {username}\n')
+        frame_text_box.configure(state = "disabled")
+        if os.path.exists("save.json"):
+            with open("save.json", "r", encoding="utf-8") as json_file:
+                save_list = json.load(json_file)
+                if save_list["username"] == username:
+                    save_list = save_list["ids"]
+                    list_id_following = list(set(list_id_following)-set(save_list))
+        else:
+            open("save.json", "a", encoding="utf-8")
+        for i in list_id_following:
+            uidd = i[0]
+            h ={
+            'Accept':'application/json, text/plain, */*',
+            'Accept-Encoding':'gzip, deflate, br',
+            'Accept-Language':'vi',
+            'Sec-Ch-Ua':'"Not A(Brand";v="99", "Microsoft Edge";v="121", "Chromium";v="121"',
+            'Sec-Ch-Ua-Mobile':'?0',
+            'Sec-Ch-Ua-Platform':'"Windows"',
+            'Sec-Fetch-Dest':'empty',
+            'Sec-Fetch-Mode':'cors',
+            'Sec-Fetch-Site':'none',
+            'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+            'X-Asbd-Id':'437806',
+            'X-Csrftoken':token,
+            'X-Ig-App-Id':'936619743392459'
+            }
+
+            a = requests.get(f"https://i.instagram.com/api/v1/users/{uidd}/info/", headers=h, cookies=ck_insta).json()
+            try:
+                public_email = a["user"]["public_email"]
+            except: public_email = ""
+            try:
+                public_phone_country_code = a["user"]["public_phone_country_code"]
+            except:
+                public_phone_country_code = ""
+            try:
+                public_phone_number = a["user"]["public_phone_number"]
+            except:
+                public_phone_number = ""
+            try:
+                city_name = a["user"]["city_name"]
+            except:
+                city_name = ""
+            try:
+                address_street = a["user"]["address_street"]
+            except:
+                address_street = ""
+            wb = openpyxl.load_workbook(datestring + ".xlsx")
+            ws = wb.active
+            ii = [i[0], i[1], i[2], i[3], i[4], i[5], a["user"]["follower_count"], a["user"]["following_count"], a["user"]["biography"], public_email, a["user"]["media_count"], public_phone_country_code, public_phone_number, city_name, address_street, a["user"]["is_private"], a["user"]["is_business"], a["user"]["external_url"], f"{user}"]
+            ws.append(ii)
+            wb.save(datestring + ".xlsx")
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'Crawl success user {i[1]}\n')
+            frame_text_box.configure(state = "disabled")
+            save_list.append(i[0])
+            data_dict = {"username": username, "ids": save_list}
+            with open("save.json", "w", encoding="utf-8") as json_file:
+                json.dump(data_dict, json_file)
+            time.sleep(int(delay.get()))
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Crawl thành công thông tin của {len(list_id_following)} ids\n')
+        frame_text_box.configure(state = "disabled")
+    def runn():
+        a = random.choice(list_userpass)
+        print(a)
+        dem = 0
+        user = a[0]
+        pss = a[1]
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(['Instagram ID','Username','Full name','Avatar pic','Followed by viewer','Is verified','Followers count','Following count','Biography','Public email','Posts count','Phone country code','Phone number','City','Address','Is private','Is business','External url', "Crawl by"])
+        datestring = datetime.datetime.strftime(datetime.datetime.now(), "%H-%M-%S-%d-%m-%Y ")
+        wb.save(datestring + ".xlsx")
+        for i in list_username:
+            craw_fl_ig(user, pss, i, datestring)
+            dem += 1
+            if dem == int(change_account.get()):
+                a = random.choice(list_userpass)
+                print(a)
+                dem = 0
+                user = a[0]
+                pss = a[1]
+    print(check_status())
+    if check_status():
+        threading.Thread(target=runn).start()
+
+
+list_username = []
+
+def open_file_user():
+    global list_username
+    from tkinter import filedialog
+    file_text_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")], title="Choose username file")
+    if file_text_path!="":
+        workbook = openpyxl.load_workbook(filename=file_text_path)
+        sheet = workbook.active
+        column = sheet["A"]
+        for cell in column:
+            list_username.append(cell.value)
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Import success {len(list_username)} usernames\n')
+        frame_text_box.configure(state = "disabled")
+
+list_userpass = []
+
+def open_file_userpass():
+    global list_usernamepass
+    from tkinter import filedialog
+    file_text_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")], title="Choose account file")
+    if file_text_path!="":
+        workbook = openpyxl.load_workbook(filename=file_text_path)
+        sheet = workbook.active
+        column = sheet["A"]
+        column2 = sheet["B"]
+        for cell1, cell2 in zip(column, column2):
+            list_userpass.append([cell1.value, cell2.value])
+        frame_text_box.configure(state = "normal")
+        frame_text_box.insert(customtkinter.END, f'Import success {len(list_userpass)} account\n')
+        frame_text_box.configure(state = "disabled")
+
+infor_input = customtkinter.CTkFrame(app, width = 310)
+infor_input.grid(row = 0, column = 0, padx = 20, pady = (20, 10))
+delay = customtkinter.CTkEntry(infor_input, width = 150, placeholder_text="Nhập delay")
+delay.grid(row = 0, column = 0, padx = (0, 5))
+change_account = customtkinter.CTkEntry(infor_input, width = 150, placeholder_text="Nhập số username thay account")
+change_account.grid(row = 0, column = 1, padx = (5, 0))
+
+button_frame = customtkinter.CTkFrame(app, width = 260, height= 50)
+button_frame.grid(row = 2, column = 0, pady = 10)
+
+start_button = customtkinter.CTkButton(button_frame, width = 60, height = 50, text = 'Start', command=start)
+start_button.grid(row = 0, column = 1, padx = (0,0))
+
+stop_button = customtkinter.CTkButton(button_frame, width = 60, height = 50, text = 'Stop', command=stop)
+stop_button.grid(row = 0, column = 2, padx = (10,10))
+
+file_button = customtkinter.CTkButton(button_frame, width = 60, height = 50, text = 'Account', command=open_file_userpass)
+file_button.grid(row = 0, column = 3, padx = (0,0))
+
+file_text = customtkinter.CTkButton(button_frame, width = 70, height = 50, text = 'Username', command=open_file_user)
+file_text.grid(row = 0, column = 4, padx = (10,0))
+
+frame_text_box = customtkinter.CTkTextbox(app, width = 300, height= 220)
+frame_text_box.grid(row = 4, column = 0, pady = 10)
+frame_text_box.configure(state = "disabled")
+
+app.mainloop()
