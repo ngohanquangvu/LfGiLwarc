@@ -201,7 +201,7 @@ def start():
                     wb = openpyxl.load_workbook(datestring + ".xlsx")
                     ws = wb.active
                     try:
-                        ii = [list_id_following[0], list_id_following[1], list_id_following[2], list_id_following[3], list_id_following[4], list_id_following[5], a["user"]["follower_count"], a["user"]["following_count"], a["user"]["biography"], public_email, a["user"]["media_count"], public_phone_country_code, public_phone_number, city_name, address_street, a["user"]["is_private"], a["user"]["is_business"], a["user"]["external_url"], f"{user}"]
+                        ii = [list_id_following[0], list_id_following[1], list_id_following[2], list_id_following[3], list_id_following[4], list_id_following[5], a["user"]["follower_count"], a["user"]["following_count"], a["user"]["biography"], public_email, a["user"]["media_count"], public_phone_country_code, public_phone_number, city_name, address_street, a["user"]["is_private"], a["user"]["is_business"], a["user"]["external_url"], f"{username}"]
                         ws.append(ii)
                         wb.save(datestring + ".xlsx")
                         frame_text_box.configure(state = "normal")
@@ -221,22 +221,45 @@ def start():
                     break
                 time.sleep(3)
             else:
-                time.sleep(5)
-                s = requests.session()
-                s.get("https://www.instagram.com")
-                token = s.cookies.get ("csrftoken")
-                header={
-                "x-csrftoken":token,
-                "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0"
-                }
+                while True:
+                    time.sleep(5)
+                    try:
+                        data = {
+                        "enc_password": password_encrypt(pss),
+                        "username": user,
+                        "queryParams": {}
+                        }
+                        r = s.post("https://www.instagram.com/accounts/login/ajax/",data=data, headers=header)
+                        h ={
+                            'Accept':'application/json, text/plain, */*',
+                            'Accept-Encoding':'gzip, deflate, br',
+                            'Accept-Language':'vi',
+                            'Sec-Ch-Ua':'"Not A(Brand";v="99", "Microsoft Edge";v="121", "Chromium";v="121"',
+                            'Sec-Ch-Ua-Mobile':'?0',
+                            'Sec-Ch-Ua-Platform':'"Windows"',
+                            'Sec-Fetch-Dest':'empty',
+                            'Sec-Fetch-Mode':'cors',
+                            'Sec-Fetch-Site':'none',
+                            'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+                            'X-Asbd-Id':'437806',
+                            'X-Csrftoken':token,
+                            'X-Ig-App-Id':'936619743392459'
+                        }
 
-                data = {
-                "enc_password": enc_pass,
-                "username": user,
-                "queryParams": {}
-                }
-                r = s.post("https://www.instagram.com/accounts/login/ajax/",data=data, headers=header)
-                ck_insta = r.cookies.get_dict()
+                        ck_insta = r.cookies.get_dict()
+                        uid = requests.get(f"https://i.instagram.com/api/v1/users/web_profile_info/?username={username}", cookies=ck_insta, headers=h).json()["data"]["user"]["id"]
+                        frame_text_box.configure(state = "normal")
+                        frame_text_box.insert(customtkinter.END, f'Login thành công account {user}\n')
+                        frame_text_box.configure(state = "disabled")
+                        break
+                    except:
+                        frame_text_box.configure(state = "normal")
+                        frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+                        frame_text_box.configure(state = "disabled")
+                        list_userpass.remove([user, pss])
+                        a = random.choice(list_userpass)
+                        user = a[0]
+                        pss = a[1]
     
         frame_text_box.configure(state = "normal")
         frame_text_box.insert(customtkinter.END, f'Crawl thành công thông tin của {len(list_id_following)} ids\n')
