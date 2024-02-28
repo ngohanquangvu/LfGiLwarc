@@ -35,7 +35,8 @@ def check_status():
     else: return True
 
 def start():
-    def craw_fl_ig(user, pss, username, datestring):
+    def get_cookie(user, pss):
+        global ck_insta, token_insta
         def password_encrypt(password):
             publickeyid, publickey = password_publickeys()
             session_key = get_random_bytes(32)
@@ -69,35 +70,30 @@ def start():
             publickeyid = int(resp.headers.get("ig-set-password-encryption-key-id"))
             publickey = resp.headers.get("ig-set-password-encryption-pub-key")
             return publickeyid, publickey
-
-        enc_pass = password_encrypt(pss)
-
         s = requests.session()
         s.get("https://www.instagram.com")
-        token = s.cookies.get ("csrftoken")
+        token_insta = s.cookies.get ("csrftoken")
         header={
-        "x-csrftoken":token,
+        "x-csrftoken":token_insta,
         "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0"
         }
 
         data = {
-        "enc_password": enc_pass,
+        "enc_password": password_encrypt(pss),
         "username": user,
         "queryParams": {}
         }
         r = s.post("https://www.instagram.com/accounts/login/ajax/",data=data, headers=header)
-
-        if str(r.json()["authenticated"]) == "False":
-            frame_text_box.configure(state = "normal")
-            frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}|{pss}\n')
-            frame_text_box.configure(state = "disabled")
-            list_userpass.remove([user, pss])
-            a = random.choice(list_userpass)
-            user = a[0]
-            pss = a[1]
-            craw_fl_ig(user, pss, username, datestring)
-        elif str(r.json()["authenticated"]) == "True":
-            try:
+        print(r.text)
+        try:
+            if str(r.json()["authenticated"]) == "False":
+                frame_text_box.configure(state = "normal")
+                frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+                frame_text_box.configure(state = "disabled")
+                return False
+            elif str(r.json()["authenticated"]) == "True":
+                ck_insta = r.cookies.get_dict()
+                uid = r.json()["userId"]
                 h ={
                     'Accept':'application/json, text/plain, */*',
                     'Accept-Encoding':'gzip, deflate, br',
@@ -110,160 +106,188 @@ def start():
                     'Sec-Fetch-Site':'none',
                     'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
                     'X-Asbd-Id':'437806',
-                    'X-Csrftoken':token,
+                    'X-Csrftoken':token_insta,
                     'X-Ig-App-Id':'936619743392459'
                 }
 
-                ck_insta = r.cookies.get_dict()
-                uid = requests.get(f"https://i.instagram.com/api/v1/users/web_profile_info/?username={username}", cookies=ck_insta, headers=h).json()["data"]["user"]["id"]
-
+                a = requests.get(f"https://i.instagram.com/api/v1/users/{uid}/info/", headers=h, cookies=ck_insta)
                 frame_text_box.configure(state = "normal")
-                frame_text_box.insert(customtkinter.END, f'Login thành công account {user}\n')
+                frame_text_box.insert(customtkinter.END, f'Login thành công user {user}\n')
                 frame_text_box.configure(state = "disabled")
-            except:
-                frame_text_box.configure(state = "normal")
-                frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}|{pss}\n')
-                frame_text_box.configure(state = "disabled")
-                list_userpass.remove([user, pss])
-                a = random.choice(list_userpass)
-                user = a[0]
-                pss = a[1]
-                craw_fl_ig(user, pss, username, datestring)
-        else:
-            frame_text_box.configure(state = "normal")
-            frame_text_box.insert(customtkinter.END, f'Tạm thời bị block, chờ 20s nhả block\n')
-            frame_text_box.configure(state = "disabled")
-            time.sleep(20)
-            craw_fl_ig(user, pss, username, datestring)
-        url = f"https://www.instagram.com/graphql/query/?query_hash=58712303d941c6855d4e888c5f0cd22f&variables=%7B%22id%22:%22{uid}%22,%22first%22:50,%22after%22:%22%22%7D"
-        if os.path.exists("save.json"):
-            with open("save.json", "r", encoding="utf-8") as json_file:
-                try:
-                    save_list = json.load(json_file)
-                    if save_list["username"] == username:
-                        save_list = save_list["ids"]
-                        list_id_following = list(set(list_id_following)-set(save_list))
-                except: save_list = []
-        else:
-            open("save.json", "a", encoding="utf-8")
-            save_list = []
-        while True:
-            a = requests.get(url, cookies=ck_insta)
-            if ("Please wait a few minutes before you try again." in a.text) == False:
-                a = a.json()
-                b = a["data"]["user"]["edge_follow"]["edges"]
-                for i in b:
-                    iid = i["node"]["id"]
-                    print(iid)
-                    username_following = i["node"]["username"]
-                    fullname = i["node"]["full_name"]
-                    avt_pic = i["node"]["profile_pic_url"]
-                    is_verified = i["node"]["is_verified"]
-                    followed_by_viewer = i["node"]["followed_by_viewer"]
-                    list_id_following = [iid, username_following, fullname, avt_pic, followed_by_viewer, is_verified]
-                    uidd = iid
-                    h ={
-                    'Accept':'application/json, text/plain, */*',
-                    'Accept-Encoding':'gzip, deflate, br',
-                    'Accept-Language':'vi',
-                    'Sec-Ch-Ua':'"Not A(Brand";v="99", "Microsoft Edge";v="121", "Chromium";v="121"',
-                    'Sec-Ch-Ua-Mobile':'?0',
-                    'Sec-Ch-Ua-Platform':'"Windows"',
-                    'Sec-Fetch-Dest':'empty',
-                    'Sec-Fetch-Mode':'cors',
-                    'Sec-Fetch-Site':'none',
-                    'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
-                    'X-Asbd-Id':'437806',
-                    'X-Csrftoken':token,
-                    'X-Ig-App-Id':'936619743392459'
-                    }
-
-                    a = requests.get(f"https://i.instagram.com/api/v1/users/{uidd}/info/", headers=h, cookies=ck_insta).json()
-                    try:
-                        public_email = a["user"]["public_email"]
-                    except: public_email = ""
-                    try:
-                        public_phone_country_code = a["user"]["public_phone_country_code"]
-                    except:
-                        public_phone_country_code = ""
-                    try:
-                        public_phone_number = a["user"]["public_phone_number"]
-                    except:
-                        public_phone_number = ""
-                    try:
-                        city_name = a["user"]["city_name"]
-                    except:
-                        city_name = ""
-                    try:
-                        address_street = a["user"]["address_street"]
-                    except:
-                        address_street = ""
-                    wb = openpyxl.load_workbook(datestring + ".xlsx")
-                    ws = wb.active
-                    try:
-                        ii = [list_id_following[0], list_id_following[1], list_id_following[2], list_id_following[3], list_id_following[4], list_id_following[5], a["user"]["follower_count"], a["user"]["following_count"], a["user"]["biography"], public_email, a["user"]["media_count"], public_phone_country_code, public_phone_number, city_name, address_street, a["user"]["is_private"], a["user"]["is_business"], a["user"]["external_url"], f"{username}"]
-                        ws.append(ii)
-                        wb.save(datestring + ".xlsx")
-                        frame_text_box.configure(state = "normal")
-                        frame_text_box.insert(customtkinter.END, f'Crawl success user {list_id_following[1]}\n')
-                        frame_text_box.configure(state = "disabled")
-                        save_list.append(list_id_following[0])
-                        data_dict = {"username": username, "ids": save_list}
-                        with open("save.json", "w", encoding="utf-8") as json_file:
-                            json.dump(data_dict, json_file)
-                        time.sleep(int(delay.get()))
-                    except Exception as e:
-                        print("Lỗi: "+str(e))
-                if str(a["data"]["user"]["edge_follow"]["page_info"]["has_next_page"]) == "True":
-                    next_cursor = quote(a["data"]["user"]["edge_follow"]["page_info"]["end_cursor"])
-                    url = f"https://www.instagram.com/graphql/query/?query_hash=58712303d941c6855d4e888c5f0cd22f&variables=%7B%22id%22:%22{uid}%22,%22first%22:50,%22after%22:%22{next_cursor}%22%7D"
-                else:
-                    break
-                time.sleep(3)
+                a = a.json()["user"]["following_count"]
+                return True
             else:
-                while True:
-                    time.sleep(5)
-                    try:
-                        data = {
-                        "enc_password": password_encrypt(pss),
-                        "username": user,
-                        "queryParams": {}
-                        }
-                        r = s.post("https://www.instagram.com/accounts/login/ajax/",data=data, headers=header)
-                        h ={
-                            'Accept':'application/json, text/plain, */*',
-                            'Accept-Encoding':'gzip, deflate, br',
-                            'Accept-Language':'vi',
-                            'Sec-Ch-Ua':'"Not A(Brand";v="99", "Microsoft Edge";v="121", "Chromium";v="121"',
-                            'Sec-Ch-Ua-Mobile':'?0',
-                            'Sec-Ch-Ua-Platform':'"Windows"',
-                            'Sec-Fetch-Dest':'empty',
-                            'Sec-Fetch-Mode':'cors',
-                            'Sec-Fetch-Site':'none',
-                            'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
-                            'X-Asbd-Id':'437806',
-                            'X-Csrftoken':token,
-                            'X-Ig-App-Id':'936619743392459'
-                        }
+                frame_text_box.configure(state = "normal")
+                frame_text_box.insert(customtkinter.END, f'Tạm thời bị block, chờ 20s nhả block\n')
+                frame_text_box.configure(state = "disabled")
+                time.sleep(20)
+        except Exception as e:
+            print(str(e))
+            return False
 
-                        ck_insta = r.cookies.get_dict()
-                        uid = requests.get(f"https://i.instagram.com/api/v1/users/web_profile_info/?username={username}", cookies=ck_insta, headers=h).json()["data"]["user"]["id"]
-                        frame_text_box.configure(state = "normal")
-                        frame_text_box.insert(customtkinter.END, f'Login thành công account {user}\n')
-                        frame_text_box.configure(state = "disabled")
-                        break
+    def craw_fl_ig(user, pss, username, datestring):
+        global token_insta, ck_insta
+        check_acc = get_cookie(user, pss)
+        if check_acc == True:
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'Login thành công user {user}\n')
+            frame_text_box.configure(state = "disabled")
+            h ={
+                        'Accept':'application/json, text/plain, */*',
+                        'Accept-Encoding':'gzip, deflate, br',
+                        'Accept-Language':'vi',
+                        'Sec-Ch-Ua':'"Not A(Brand";v="99", "Microsoft Edge";v="121", "Chromium";v="121"',
+                        'Sec-Ch-Ua-Mobile':'?0',
+                        'Sec-Ch-Ua-Platform':'"Windows"',
+                        'Sec-Fetch-Dest':'empty',
+                        'Sec-Fetch-Mode':'cors',
+                        'Sec-Fetch-Site':'none',
+                        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+                        'X-Asbd-Id':'437806',
+                        'X-Csrftoken':token_insta,
+                        'X-Ig-App-Id':'936619743392459'
+                    }
+            uid = requests.get(f"https://i.instagram.com/api/v1/users/web_profile_info/?username={username}", cookies=ck_insta, headers=h).json()["data"]["user"]["id"]
+            url = f"https://www.instagram.com/graphql/query/?query_hash=58712303d941c6855d4e888c5f0cd22f&variables=%7B%22id%22:%22{uid}%22,%22first%22:50,%22after%22:%22%22%7D"
+            if os.path.exists("save.json"):
+                with open("save.json", "r", encoding="utf-8") as json_file:
+                    try:
+                        save_list = json.load(json_file)
+                        if save_list["username"] == username:
+                            save_list = save_list["ids"]
+                            list_id_following = list(set(list_id_following)-set(save_list))
+                    except: save_list = []
+            else:
+                open("save.json", "a", encoding="utf-8")
+                save_list = []
+            while True:
+                list_infor = requests.get(url, cookies=ck_insta)
+                if ("Please wait a few minutes before you try again." in list_infor.text) == False:
+                    try:
+                        list_infor = list_infor.json()
+                        b = list_infor["data"]["user"]["edge_follow"]["edges"]
+                        for i in b:
+                            print(len(b))
+                            iid = i["node"]["id"]
+                            if (iid in save_list) == False:
+                                username_following = i["node"]["username"]
+                                fullname = i["node"]["full_name"]
+                                avt_pic = i["node"]["profile_pic_url"]
+                                is_verified = i["node"]["is_verified"]
+                                followed_by_viewer = i["node"]["followed_by_viewer"]
+                                list_id_following = [iid, username_following, fullname, avt_pic, followed_by_viewer, is_verified]
+                                uidd = iid
+                                h ={
+                                'Accept':'application/json, text/plain, */*',
+                                'Accept-Encoding':'gzip, deflate, br',
+                                'Accept-Language':'vi',
+                                'Sec-Ch-Ua':'"Not A(Brand";v="99", "Microsoft Edge";v="121", "Chromium";v="121"',
+                                'Sec-Ch-Ua-Mobile':'?0',
+                                'Sec-Ch-Ua-Platform':'"Windows"',
+                                'Sec-Fetch-Dest':'empty',
+                                'Sec-Fetch-Mode':'cors',
+                                'Sec-Fetch-Site':'none',
+                                'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+                                'X-Asbd-Id':'437806',
+                                'X-Csrftoken':token_insta,
+                                'X-Ig-App-Id':'936619743392459'
+                                }
+
+                                a = requests.get(f"https://i.instagram.com/api/v1/users/{uidd}/info/", headers=h, cookies=ck_insta).json()
+                                try:
+                                    public_email = a["user"]["public_email"]
+                                except: public_email = ""
+                                try:
+                                    public_phone_country_code = a["user"]["public_phone_country_code"]
+                                except:
+                                    public_phone_country_code = ""
+                                try:
+                                    public_phone_number = a["user"]["public_phone_number"]
+                                except:
+                                    public_phone_number = ""
+                                try:
+                                    city_name = a["user"]["city_name"]
+                                except:
+                                    city_name = ""
+                                try:
+                                    address_street = a["user"]["address_street"]
+                                except:
+                                    address_street = ""
+                                wb = openpyxl.load_workbook(datestring + ".xlsx")
+                                ws = wb.active
+                                try:
+                                    ii = [list_id_following[0], list_id_following[1], list_id_following[2], list_id_following[3], list_id_following[4], list_id_following[5], a["user"]["follower_count"], a["user"]["following_count"], a["user"]["biography"], public_email, a["user"]["media_count"], public_phone_country_code, public_phone_number, city_name, address_street, a["user"]["is_private"], a["user"]["is_business"], a["user"]["external_url"], f"{username}"]
+                                    ws.append(ii)
+                                    wb.save(datestring + ".xlsx")
+                                    frame_text_box.configure(state = "normal")
+                                    frame_text_box.insert(customtkinter.END, f'Crawl success user {list_id_following[1]}\n')
+                                    frame_text_box.configure(state = "disabled")
+                                    save_list.append(list_id_following[0])
+                                    data_dict = {"username": username, "ids": save_list}
+                                    with open("save.json", "w", encoding="utf-8") as json_file:
+                                        json.dump(data_dict, json_file)
+                                    time.sleep(int(delay.get()))
+                                except Exception as e:
+                                    print("Lỗi crawl: "+str(e))
+                                    print(a)
+                                    b.append(i)
+                                    while get_cookie(user, pss)==False:
+                                        time.sleep(5)
+                                        frame_text_box.configure(state = "normal")
+                                        frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+                                        frame_text_box.configure(state = "disabled")
+                                        list_userpass.remove([user, pss])
+                                        aa = random.choice(list_userpass)
+                                        user = aa[0]
+                                        pss = aa[1]
+                                        
+                                    frame_text_box.configure(state = "normal")
+                                    frame_text_box.insert(customtkinter.END, f'Login thành công account {user}, tiếp tục crawl details\n')
+                                    frame_text_box.configure(state = "disabled")
+                        if str(list_infor["data"]["user"]["edge_follow"]["page_info"]["has_next_page"]) == "True":
+                            next_cursor = quote(list_infor["data"]["user"]["edge_follow"]["page_info"]["end_cursor"])
+                            url = f"https://www.instagram.com/graphql/query/?query_hash=58712303d941c6855d4e888c5f0cd22f&variables=%7B%22id%22:%22{uid}%22,%22first%22:50,%22after%22:%22{next_cursor}%22%7D"
+                        else:
+                            break
+                        time.sleep(3)
                     except:
+                        print(a)
+                        while get_cookie(user, pss)==False:
+                                        time.sleep(5)
+                                        frame_text_box.configure(state = "normal")
+                                        frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+                                        frame_text_box.configure(state = "disabled")
+                                        list_userpass.remove([user, pss])
+                                        aa = random.choice(list_userpass)
+                                        user = aa[0]
+                                        pss = aa[1]
+                                        
                         frame_text_box.configure(state = "normal")
-                        frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+                        frame_text_box.insert(customtkinter.END, f'Login thành công account {user}, tiếp tục crawl details\n')
                         frame_text_box.configure(state = "disabled")
-                        list_userpass.remove([user, pss])
-                        a = random.choice(list_userpass)
-                        user = a[0]
-                        pss = a[1]
-    
-        frame_text_box.configure(state = "normal")
-        frame_text_box.insert(customtkinter.END, f'Crawl thành công thông tin của {len(list_id_following)} ids\n')
-        frame_text_box.configure(state = "disabled")
+                else:
+                    while get_cookie(user, pss)==False:
+                                        time.sleep(5)
+                                        frame_text_box.configure(state = "normal")
+                                        frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+                                        frame_text_box.configure(state = "disabled")
+                                        list_userpass.remove([user, pss])
+                                        aa = random.choice(list_userpass)
+                                        user = aa[0]
+                                        pss = aa[1]
+                                        
+                    frame_text_box.configure(state = "normal")
+                    frame_text_box.insert(customtkinter.END, f'Login thành công account {user}, tiếp tục crawl details\n')
+                    frame_text_box.configure(state = "disabled")
+        
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'Crawl thành công thông tin của {len(list_id_following)} ids\n')
+            frame_text_box.configure(state = "disabled")
+        else:
+            aa = random.choice(list_userpass)
+            user = aa[0]
+            pss = aa[1]
+            craw_fl_ig(user, pss, username, datestring)
     def runn():
         a = random.choice(list_userpass)
         print(a)
