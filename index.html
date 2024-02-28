@@ -35,8 +35,8 @@ def check_status():
     else: return True
 
 def start():
-    def get_cookie(user, pss):
-        global ck_insta, token_insta
+    def get_cookie(user, pss, pos):
+        global ck_insta, token_insta, sheet_userpass
         def password_encrypt(password):
             publickeyid, publickey = password_publickeys()
             session_key = get_random_bytes(32)
@@ -85,6 +85,26 @@ def start():
         }
         r = s.post("https://www.instagram.com/accounts/login/ajax/",data=data, headers=header)
         print(r.text)
+        if "there was a problem with your request" in r.text:
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+            frame_text_box.configure(state = "disabled")
+            acc_cp = sheet_userpass.cell(column = 3, row = pos)
+            acc_cp.value = "Checkpoint"
+            workbook_userpass.save(file_userpass)
+            open("CheckPoint.txt", "a", encoding="utf-8").write(f"{user}|{pss}\n")
+            list_userpass.remove([user, pss, pos])
+            return False
+        elif "checkpoint_required" in r.text:
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+            frame_text_box.configure(state = "disabled")
+            acc_cp = sheet_userpass.cell(column = 3, row = pos)
+            acc_cp.value = "Checkpoint"
+            workbook_userpass.save(file_userpass)
+            open("CheckPoint.txt", "a", encoding="utf-8").write(f"{user}|{pss}\n")
+            list_userpass.remove([user, pss, pos])
+            return False
         try:
             if str(r.json()["authenticated"]) == "False":
                 frame_text_box.configure(state = "normal")
@@ -111,6 +131,7 @@ def start():
                 }
 
                 a = requests.get(f"https://i.instagram.com/api/v1/users/{uid}/info/", headers=h, cookies=ck_insta)
+                print(a.text)
                 a = a.json()["user"]["following_count"]
                 frame_text_box.configure(state = "normal")
                 frame_text_box.insert(customtkinter.END, f'Login thành công user {user}\n')
@@ -123,15 +144,21 @@ def start():
                 time.sleep(20)
         except Exception as e:
             print(str(e))
+            frame_text_box.configure(state = "normal")
+            frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+            frame_text_box.configure(state = "disabled")
+            acc_cp = sheet_userpass.cell(column = 3, row = pos)
+            acc_cp.value = "Không xác định"
+            workbook_userpass.save(file_userpass)
+            open("CheckPoint.txt", "a", encoding="utf-8").write(f"{user}|{pss}\n")
+            print(list_userpass)
+            list_userpass.remove([user, pss, pos])
             return False
 
-    def craw_fl_ig(user, pss, username, datestring):
+    def craw_fl_ig(user, pss, pos, username, datestring):
         global token_insta, ck_insta
-        check_acc = get_cookie(user, pss)
+        check_acc = get_cookie(user, pss, pos)
         if check_acc == True:
-            frame_text_box.configure(state = "normal")
-            frame_text_box.insert(customtkinter.END, f'Login thành công user {user}\n')
-            frame_text_box.configure(state = "disabled")
             h ={
                         'Accept':'application/json, text/plain, */*',
                         'Accept-Encoding':'gzip, deflate, br',
@@ -155,11 +182,11 @@ def start():
                         save_list = json.load(json_file)
                         if save_list["username"] == username:
                             save_list = save_list["ids"]
-                            list_id_following = list(set(list_id_following)-set(save_list))
                     except: save_list = []
             else:
                 open("save.json", "a", encoding="utf-8")
                 save_list = []
+            print(save_list)
             while True:
                 list_infor = requests.get(url, cookies=ck_insta)
                 if ("Please wait a few minutes before you try again." in list_infor.text) == False:
@@ -167,7 +194,6 @@ def start():
                         list_infor = list_infor.json()
                         b = list_infor["data"]["user"]["edge_follow"]["edges"]
                         for i in b:
-                            print(len(b))
                             iid = i["node"]["id"]
                             if (iid in save_list) == False:
                                 username_following = i["node"]["username"]
@@ -231,7 +257,7 @@ def start():
                                     print("Lỗi crawl: "+str(e))
                                     print(a)
                                     b.append(i)
-                                    while get_cookie(user, pss)==False:
+                                    while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
                                         frame_text_box.configure(state = "normal")
                                         frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
@@ -240,6 +266,7 @@ def start():
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
                                         pss = aa[1]
+                                        pos = aa[2]
                                         
                                     frame_text_box.configure(state = "normal")
                                     frame_text_box.insert(customtkinter.END, f'Login thành công account {user}, tiếp tục crawl details\n')
@@ -247,12 +274,13 @@ def start():
                         if str(list_infor["data"]["user"]["edge_follow"]["page_info"]["has_next_page"]) == "True":
                             next_cursor = quote(list_infor["data"]["user"]["edge_follow"]["page_info"]["end_cursor"])
                             url = f"https://www.instagram.com/graphql/query/?query_hash=58712303d941c6855d4e888c5f0cd22f&variables=%7B%22id%22:%22{uid}%22,%22first%22:50,%22after%22:%22{next_cursor}%22%7D"
+                            print(url)
                         else:
                             break
                         time.sleep(3)
                     except:
                         print(a)
-                        while get_cookie(user, pss)==False:
+                        while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
                                         frame_text_box.configure(state = "normal")
                                         frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
@@ -261,12 +289,13 @@ def start():
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
                                         pss = aa[1]
+                                        pos = aa[2]
                                         
                         frame_text_box.configure(state = "normal")
                         frame_text_box.insert(customtkinter.END, f'Login thành công account {user}, tiếp tục crawl details\n')
                         frame_text_box.configure(state = "disabled")
                 else:
-                    while get_cookie(user, pss)==False:
+                    while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
                                         frame_text_box.configure(state = "normal")
                                         frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
@@ -275,6 +304,7 @@ def start():
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
                                         pss = aa[1]
+                                        pos = aa[2]
                                         
                     frame_text_box.configure(state = "normal")
                     frame_text_box.insert(customtkinter.END, f'Login thành công account {user}, tiếp tục crawl details\n')
@@ -287,20 +317,22 @@ def start():
             aa = random.choice(list_userpass)
             user = aa[0]
             pss = aa[1]
-            craw_fl_ig(user, pss, username, datestring)
+            pos = aa[2]
+            craw_fl_ig(user, pss, pos, username, datestring)
     def runn():
         a = random.choice(list_userpass)
         print(a)
         dem = 0
         user = a[0]
         pss = a[1]
+        pos = a[2]
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.append(['Instagram ID','Username','Full name','Avatar pic','Followed by viewer','Is verified','Followers count','Following count','Biography','Public email','Posts count','Phone country code','Phone number','City','Address','Is private','Is business','External url', "Crawl by"])
         datestring = datetime.datetime.strftime(datetime.datetime.now(), "%H-%M-%S-%d-%m-%Y ")
         wb.save(datestring + ".xlsx")
         for i in list_username:
-            craw_fl_ig(user, pss, i, datestring)
+            craw_fl_ig(user, pss, pos, i, datestring)
             dem += 1
             if dem == int(change_account.get()):
                 a = random.choice(list_userpass)
@@ -308,6 +340,7 @@ def start():
                 dem = 0
                 user = a[0]
                 pss = a[1]
+                pos = a[2]
     print(check_status())
     if check_status():
         threading.Thread(target=runn).start()
@@ -330,18 +363,23 @@ def open_file_user():
         frame_text_box.configure(state = "disabled")
 
 list_userpass = []
+sheet_userpass = None
+file_userpass = ""
+workbook_userpass = None
 
 def open_file_userpass():
-    global list_usernamepass
+    global list_usernamepass, sheet_userpass, file_userpass, workbook_userpass
     from tkinter import filedialog
-    file_text_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")], title="Choose account file")
-    if file_text_path!="":
-        workbook = openpyxl.load_workbook(filename=file_text_path)
-        sheet = workbook.active
-        column = sheet["A"]
-        column2 = sheet["B"]
-        for cell1, cell2 in zip(column, column2):
-            list_userpass.append([cell1.value, cell2.value])
+    file_userpass = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")], title="Choose account file")
+    if file_userpass!="":
+        workbook_userpass = openpyxl.load_workbook(filename=file_userpass)
+        sheet_userpass = workbook_userpass.active
+        column = sheet_userpass["A"]
+        column2 = sheet_userpass["B"]
+        col3 = sheet_userpass["C"]
+        for cell1, cell2, cell3 in zip(column, column2, col3):
+            if cell3.value=="":
+                list_userpass.append([cell1.value, cell2.value, cell1.row])
         frame_text_box.configure(state = "normal")
         frame_text_box.insert(customtkinter.END, f'Import success {len(list_userpass)} account\n')
         frame_text_box.configure(state = "disabled")
