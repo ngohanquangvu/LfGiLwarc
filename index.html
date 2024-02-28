@@ -378,7 +378,7 @@ def open_file_userpass():
         column2 = sheet_userpass["B"]
         col3 = sheet_userpass["C"]
         for cell1, cell2, cell3 in zip(column, column2, col3):
-            if cell3.value=="":
+            if cell3.value=="" or cell3.value == None:
                 list_userpass.append([cell1.value, cell2.value, cell1.row])
         frame_text_box.configure(state = "normal")
         frame_text_box.insert(customtkinter.END, f'Import success {len(list_userpass)} account\n')
