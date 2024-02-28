@@ -111,10 +111,10 @@ def start():
                 }
 
                 a = requests.get(f"https://i.instagram.com/api/v1/users/{uid}/info/", headers=h, cookies=ck_insta)
+                a = a.json()["user"]["following_count"]
                 frame_text_box.configure(state = "normal")
                 frame_text_box.insert(customtkinter.END, f'Login thành công user {user}\n')
                 frame_text_box.configure(state = "disabled")
-                a = a.json()["user"]["following_count"]
                 return True
             else:
                 frame_text_box.configure(state = "normal")
