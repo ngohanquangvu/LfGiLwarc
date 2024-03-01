@@ -36,7 +36,7 @@ def check_status():
 
 def start():
     def get_cookie(user, pss, pos):
-        global ck_insta, token_insta, sheet_userpass
+        global ck_insta, token_insta, sheet_userpass, list_userpass
         def password_encrypt(password):
             publickeyid, publickey = password_publickeys()
             session_key = get_random_bytes(32)
@@ -266,9 +266,6 @@ def start():
                                     b.append(i)
                                     while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
-                                        frame_text_box.configure(state = "normal")
-                                        frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
-                                        frame_text_box.configure(state = "disabled")
                                         list_userpass.remove([user, pss])
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
@@ -287,10 +284,7 @@ def start():
                         print(a)
                         while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
-                                        frame_text_box.configure(state = "normal")
-                                        frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
-                                        frame_text_box.configure(state = "disabled")
-                                        list_userpass.remove([user, pss])
+                                        list_userpass.remove([user, pss, pos])
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
                                         pss = aa[1]
@@ -299,10 +293,7 @@ def start():
                 else:
                     while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
-                                        frame_text_box.configure(state = "normal")
-                                        frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
-                                        frame_text_box.configure(state = "disabled")
-                                        list_userpass.remove([user, pss])
+                                        list_userpass.remove([user, pss, pos])
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
                                         pss = aa[1]
