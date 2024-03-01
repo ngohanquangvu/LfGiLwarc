@@ -111,6 +111,7 @@ def start():
                     frame_text_box.configure(state = "normal")
                     frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
                     frame_text_box.configure(state = "disabled")
+                    list_userpass.remove([user, pss, pos])
                     return False
                 elif str(r.json()["authenticated"]) == "True":
                     ck_insta = r.cookies.get_dict()
@@ -268,7 +269,6 @@ def start():
                                     b.append(i)
                                     while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
-                                        list_userpass.remove([user, pss, pos])
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
                                         pss = aa[1]
@@ -286,7 +286,6 @@ def start():
                         print(a)
                         while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
-                                        list_userpass.remove([user, pss, pos])
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
                                         pss = aa[1]
@@ -295,7 +294,6 @@ def start():
                 else:
                     while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
-                                        list_userpass.remove([user, pss, pos])
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
                                         pss = aa[1]
