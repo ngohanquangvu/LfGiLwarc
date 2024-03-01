@@ -143,6 +143,7 @@ def start():
                     frame_text_box.insert(customtkinter.END, f'Tạm thời bị block, chờ 20s nhả block\n')
                     frame_text_box.configure(state = "disabled")
                     time.sleep(20)
+                    return False
             except Exception as e:
                 print(str(e))
                 frame_text_box.configure(state = "normal")
@@ -155,7 +156,8 @@ def start():
                 print(list_userpass)
                 list_userpass.remove([user, pss, pos])
                 return False
-        except:
+        except Exception as e:
+            print(str(e))
             frame_text_box.configure(state = "normal")
             frame_text_box.insert(customtkinter.END, f'Tạm thời bị block, chờ 20s nhả block\n')
             frame_text_box.configure(state = "disabled")
