@@ -70,89 +70,96 @@ def start():
             publickeyid = int(resp.headers.get("ig-set-password-encryption-key-id"))
             publickey = resp.headers.get("ig-set-password-encryption-pub-key")
             return publickeyid, publickey
-        s = requests.session()
-        s.get("https://www.instagram.com")
-        token_insta = s.cookies.get ("csrftoken")
-        header={
-        "x-csrftoken":token_insta,
-        "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0"
-        }
-
-        data = {
-        "enc_password": password_encrypt(pss),
-        "username": user,
-        "queryParams": {}
-        }
-        r = s.post("https://www.instagram.com/accounts/login/ajax/",data=data, headers=header)
-        print(r.text)
-        if "there was a problem with your request" in r.text:
-            frame_text_box.configure(state = "normal")
-            frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
-            frame_text_box.configure(state = "disabled")
-            acc_cp = sheet_userpass.cell(column = 3, row = pos)
-            acc_cp.value = "Checkpoint"
-            workbook_userpass.save(file_userpass)
-            open("CheckPoint.txt", "a", encoding="utf-8").write(f"{user}|{pss}\n")
-            list_userpass.remove([user, pss, pos])
-            return False
-        elif "checkpoint_required" in r.text:
-            frame_text_box.configure(state = "normal")
-            frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
-            frame_text_box.configure(state = "disabled")
-            acc_cp = sheet_userpass.cell(column = 3, row = pos)
-            acc_cp.value = "Checkpoint"
-            workbook_userpass.save(file_userpass)
-            open("CheckPoint.txt", "a", encoding="utf-8").write(f"{user}|{pss}\n")
-            list_userpass.remove([user, pss, pos])
-            return False
         try:
-            if str(r.json()["authenticated"]) == "False":
+            s = requests.session()
+            s.get("https://www.instagram.com")
+            token_insta = s.cookies.get ("csrftoken")
+            header={
+            "x-csrftoken":token_insta,
+            "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0"
+            }
+
+            data = {
+            "enc_password": password_encrypt(pss),
+            "username": user,
+            "queryParams": {}
+            }
+            r = s.post("https://www.instagram.com/accounts/login/ajax/",data=data, headers=header)
+            print(r.text)
+            if "there was a problem with your request" in r.text:
                 frame_text_box.configure(state = "normal")
                 frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
                 frame_text_box.configure(state = "disabled")
+                acc_cp = sheet_userpass.cell(column = 3, row = pos)
+                acc_cp.value = "Checkpoint"
+                workbook_userpass.save(file_userpass)
+                open("CheckPoint.txt", "a", encoding="utf-8").write(f"{user}|{pss}\n")
+                list_userpass.remove([user, pss, pos])
                 return False
-            elif str(r.json()["authenticated"]) == "True":
-                ck_insta = r.cookies.get_dict()
-                uid = r.json()["userId"]
-                h ={
-                    'Accept':'application/json, text/plain, */*',
-                    'Accept-Encoding':'gzip, deflate, br',
-                    'Accept-Language':'vi',
-                    'Sec-Ch-Ua':'"Not A(Brand";v="99", "Microsoft Edge";v="121", "Chromium";v="121"',
-                    'Sec-Ch-Ua-Mobile':'?0',
-                    'Sec-Ch-Ua-Platform':'"Windows"',
-                    'Sec-Fetch-Dest':'empty',
-                    'Sec-Fetch-Mode':'cors',
-                    'Sec-Fetch-Site':'none',
-                    'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
-                    'X-Asbd-Id':'437806',
-                    'X-Csrftoken':token_insta,
-                    'X-Ig-App-Id':'936619743392459'
-                }
+            elif "checkpoint_required" in r.text:
+                frame_text_box.configure(state = "normal")
+                frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+                frame_text_box.configure(state = "disabled")
+                acc_cp = sheet_userpass.cell(column = 3, row = pos)
+                acc_cp.value = "Checkpoint"
+                workbook_userpass.save(file_userpass)
+                open("CheckPoint.txt", "a", encoding="utf-8").write(f"{user}|{pss}\n")
+                list_userpass.remove([user, pss, pos])
+                return False
+            try:
+                if str(r.json()["authenticated"]) == "False":
+                    frame_text_box.configure(state = "normal")
+                    frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+                    frame_text_box.configure(state = "disabled")
+                    return False
+                elif str(r.json()["authenticated"]) == "True":
+                    ck_insta = r.cookies.get_dict()
+                    uid = r.json()["userId"]
+                    h ={
+                        'Accept':'application/json, text/plain, */*',
+                        'Accept-Encoding':'gzip, deflate, br',
+                        'Accept-Language':'vi',
+                        'Sec-Ch-Ua':'"Not A(Brand";v="99", "Microsoft Edge";v="121", "Chromium";v="121"',
+                        'Sec-Ch-Ua-Mobile':'?0',
+                        'Sec-Ch-Ua-Platform':'"Windows"',
+                        'Sec-Fetch-Dest':'empty',
+                        'Sec-Fetch-Mode':'cors',
+                        'Sec-Fetch-Site':'none',
+                        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+                        'X-Asbd-Id':'437806',
+                        'X-Csrftoken':token_insta,
+                        'X-Ig-App-Id':'936619743392459'
+                    }
 
-                a = requests.get(f"https://i.instagram.com/api/v1/users/{uid}/info/", headers=h, cookies=ck_insta)
-                print(a.text)
-                a = a.json()["user"]["following_count"]
+                    a = requests.get(f"https://i.instagram.com/api/v1/users/{uid}/info/", headers=h, cookies=ck_insta)
+                    print(a.text)
+                    a = a.json()["user"]["following_count"]
+                    frame_text_box.configure(state = "normal")
+                    frame_text_box.insert(customtkinter.END, f'Login thành công user {user}\n')
+                    frame_text_box.configure(state = "disabled")
+                    return True
+                else:
+                    frame_text_box.configure(state = "normal")
+                    frame_text_box.insert(customtkinter.END, f'Tạm thời bị block, chờ 20s nhả block\n')
+                    frame_text_box.configure(state = "disabled")
+                    time.sleep(20)
+            except Exception as e:
+                print(str(e))
                 frame_text_box.configure(state = "normal")
-                frame_text_box.insert(customtkinter.END, f'Login thành công user {user}\n')
+                frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
                 frame_text_box.configure(state = "disabled")
-                return True
-            else:
-                frame_text_box.configure(state = "normal")
-                frame_text_box.insert(customtkinter.END, f'Tạm thời bị block, chờ 20s nhả block\n')
-                frame_text_box.configure(state = "disabled")
-                time.sleep(20)
-        except Exception as e:
-            print(str(e))
+                acc_cp = sheet_userpass.cell(column = 3, row = pos)
+                acc_cp.value = "Không xác định"
+                workbook_userpass.save(file_userpass)
+                open("CheckPoint.txt", "a", encoding="utf-8").write(f"{user}|{pss}\n")
+                print(list_userpass)
+                list_userpass.remove([user, pss, pos])
+                return False
+        except:
             frame_text_box.configure(state = "normal")
-            frame_text_box.insert(customtkinter.END, f'Login không thành công account {user}\n')
+            frame_text_box.insert(customtkinter.END, f'Tạm thời bị block, chờ 20s nhả block\n')
             frame_text_box.configure(state = "disabled")
-            acc_cp = sheet_userpass.cell(column = 3, row = pos)
-            acc_cp.value = "Không xác định"
-            workbook_userpass.save(file_userpass)
-            open("CheckPoint.txt", "a", encoding="utf-8").write(f"{user}|{pss}\n")
-            print(list_userpass)
-            list_userpass.remove([user, pss, pos])
+            time.sleep(20)
             return False
 
     def craw_fl_ig(user, pss, pos, username, datestring):
