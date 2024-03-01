@@ -266,7 +266,7 @@ def start():
                                     b.append(i)
                                     while get_cookie(user, pss, pos)==False:
                                         time.sleep(5)
-                                        list_userpass.remove([user, pss])
+                                        list_userpass.remove([user, pss, pos])
                                         aa = random.choice(list_userpass)
                                         user = aa[0]
                                         pss = aa[1]
